@@ -1,9 +1,8 @@
 const inquirer = require('inquirer');
 const mysql = require('mysql2');
 
-empArray = [];
-deptArray = []
-roleArray = [];
+var roleArray = [];
+var deptArray = []
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -12,6 +11,35 @@ const connection = mysql.createConnection({
     password: 'Cooper378!',
     database: 'employee_tracker_db'
 })
+
+const returnRoleArray = new Promise((resolve, reject) => {
+    var sql = `SELECT title FROM role`
+    var err = false;
+    const query = connection.query(sql, function (err, results) {
+        if (err) throw err;
+        for (var i = 0; i < results.length; i++) {
+            roleArray.push(results[i].title)
+        }
+    })
+    if (!err) {
+        resolve(roleArray);
+    }else {
+        reject("Error")
+    }
+})
+
+const returnDepartmentArray = new Promise((resolve, reject) => {
+    console.log("second function")
+    var sql = `SELECT name FROM department`
+    const query = connection.query(sql, function (err, results) {
+        if (err) throw err;
+        for (var i = 0; i < results.length; i++) {
+            deptArray.push(results[i].name)
+        }
+        resolve();
+    })
+})
+
 
 const primaryMenuQuestion = [
     {
@@ -42,37 +70,12 @@ const employeeMenuQuestion = [
     }
 ];
 
-const addEmployeeQuestion = [
-    {
-        type: 'input',
-        name: 'addEmployeeFirstName',
-        message: "Please enter the employee's first name:  "
-    },
-    {
-        type: 'input',
-        name: 'addEmployeeLastName',
-        message: "Please enter the employee's last name:  "
-    },
-    {
-        type: 'list',
-        name: 'addEmployeeRoleId',
-        message: "Please select the employee's role:  ",
-        choices: roleArray
-    },
-    {
-        type: 'checkbox',
-        name: 'addEmployeeManagerId',
-        message: "Please select the employee's manager:  ",
-        choices: empArray
-    }
-]
 
 const updateEmployeeQuestion = [
     {
         type: 'list',
         name: 'updateEmployeeSelection',
-        message: 'Please select the employee to alter:  ',
-        choices: empArray
+        message: 'Please select the employee to alter:  '
     }
 ]
 
@@ -80,8 +83,7 @@ const removeEmployeeQuestion = [
     {
         type: 'list',
         name: 'removeEmployeeSelection',
-        message: 'Please select the employee to remove:  ',
-        choices: empArray
+        message: 'Please select the employee to remove:  '
     }
 ]
 
@@ -120,9 +122,10 @@ const employeeMenu = () => {
     return inquirer.prompt(employeeMenuQuestion)
 }
 
-const addEmployee = () => {
-    queryAllRoles();
-    return inquirer.prompt(addEmployeeQuestion)
+function addEmployee() {
+    Promise.all(returnRoleArray)
+        .then(values => console.log(values))
+        .catch(console.log("error!!!!"))
 }
 const updateEmployee = () => {
     return inquirer.prompt(updateEmployeeQuestion)
@@ -145,8 +148,6 @@ const init = () => {
     return inquirer.prompt(primaryMenuQuestion)
 }
 
-
-
 init()
     .then(results => {
         if (results.primaryMenu === "Maintain Employees") {
@@ -156,14 +157,12 @@ init()
                         if (err) throw err;
 
                         if (data.employeeMenuSelection === "Add a New Employee") {
-                            addEmployee()
-                                .then(addEmpResults => {
-                                    console.log(addEmpResults)
-                                })
+                            addEmployee();
                         }
                         if (data.employeeMenuSelection === "Update an Existing Employee") {
                             queryAllEmployees()
-                                .then(empArray => {
+                                .then(roleArray => {
+
 
                                 })
                         }
@@ -209,19 +208,3 @@ queryAllDepartments = () => {
     });
 }
 
-queryAllRoles = () => {
-    console.log('made it')
-    connection.connect(err => {
-        if (err) throw err;
-        connection.query(
-            `SELECT title FROM role`, (err, results, fields) => {
-                roleArray = []
-                for (let i = 0; i < results.length; i++) {
-                    roleArray.push(results[i].title)
-                }
-            }
-        )
-        console.log("rolesArray:  " + roleArray)
-        connection.end();
-    });
-}

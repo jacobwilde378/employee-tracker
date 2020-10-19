@@ -2,7 +2,8 @@ const inquirer = require('inquirer');
 const mysql = require('mysql2');
 
 var roleArray = [];
-var deptArray = []
+var deptArray = [];
+var empArray = [];
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -13,33 +14,69 @@ const connection = mysql.createConnection({
 })
 
 const returnRoleArray = new Promise((resolve, reject) => {
-    var sql = `SELECT title FROM role`
+    var sql = `SELECT id, title FROM role`
     var err = false;
     const query = connection.query(sql, function (err, results) {
         if (err) throw err;
         for (var i = 0; i < results.length; i++) {
-            roleArray.push(results[i].title)
+            roleArray.push({name: results[i].title,value: results[i].id})
         }
     })
     if (!err) {
         resolve(roleArray);
-    }else {
+    } else {
         reject("Error")
     }
 })
 
 const returnDepartmentArray = new Promise((resolve, reject) => {
-    console.log("second function")
-    var sql = `SELECT name FROM department`
+    var sql = `SELECT id, name FROM department`
+    var err = false;
     const query = connection.query(sql, function (err, results) {
         if (err) throw err;
         for (var i = 0; i < results.length; i++) {
-            deptArray.push(results[i].name)
+            deptArray.push({name: results[i].name,value: results[i].id})
         }
-        resolve();
     })
+    if (!err) {
+        resolve(deptArray);
+    } else {
+        reject("Error")
+    }
 })
 
+const returnEmployeeArray = new Promise((resolve, reject) => {
+    var sql = `SELECT id, first_name, last_name FROM employee`
+    var err = false;
+    const query = connection.query(sql, function (err, results) {
+        if (err) throw err;
+        for (var i = 0; i < results.length; i++) {
+            empArray.push({name: (results[i].id + '  ' + results[i].first_name + ' ' + results[i].last_name),value: results[i].id})
+            // empArray.push({name: results[i].id,value: results[i].id})
+        }
+    })
+    if (!err) {
+        resolve(empArray);
+    } else {
+        reject("Error")
+    }
+})
+
+function addEmployeeDB(inqResults) {
+    let params = [inqResults.empAddFirstName,inqResults.empAddLastName,inqResults.empAddRole,inqResults.empAddDepartment]
+    let sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id) values (?, ?, ?, ?)`
+    const query = connection.query(sql, params, (err, results) => {
+        if(err) throw err;
+        console.log("Added new user!");
+        employeeMenu();
+    }
+
+    )
+} 
+
+function updateEmployeeDb(inqResults) {
+    // console.log(inqResults)
+}
 
 const primaryMenuQuestion = [
     {
@@ -123,11 +160,57 @@ const employeeMenu = () => {
 }
 
 function addEmployee() {
-    Promise.all(returnRoleArray)
-        .then(values => console.log(values))
-        .catch(console.log("error!!!!"))
+    Promise.all([returnRoleArray, returnDepartmentArray])
+        .then(values => {
+            return inquirer.prompt([
+                {
+                    type: 'input',
+                    message: 'Please enter a first name:  ',
+                    name: 'empAddFirstName'
+                },
+                {
+                    type: 'input',
+                    message: 'Please enter a last name:  ',
+                    name: 'empAddLastName'
+                },
+                {
+                    type: 'list',
+                    message: 'Please enter a first name:  ',
+                    name: 'empAddRole',
+                    choices: values[0]
+                },
+                {
+                    type: 'list',
+                    message: 'Please enter a first name:  ',
+                    name: 'empAddDepartment',
+                    choices: values[1]
+                },
+
+            ]);
+            
+        })
+        .then(inqResults => {
+            addEmployeeDB(inqResults);
+        })
+        .catch(e => console.log(e))
 }
 const updateEmployee = () => {
+    Promise.all([returnEmployeeArray])
+        .then(values => {
+            console.log(values)
+            return inquirer.prompt([
+                {
+                    type: 'list',
+                    message: 'Please select an employee to Update:  ',
+                    name: 'empUpdateSelected',
+                    choices: values[0]
+                },
+            ]);
+        })
+        .then(inqResults => {
+            updateEmployeeDb(inqResults);
+        })
+        .catch(e => console.log(e))
     return inquirer.prompt(updateEmployeeQuestion)
 }
 
@@ -160,11 +243,7 @@ init()
                             addEmployee();
                         }
                         if (data.employeeMenuSelection === "Update an Existing Employee") {
-                            queryAllEmployees()
-                                .then(roleArray => {
-
-
-                                })
+                            updateEmployee();
                         }
                         if (data.employeeMenuSelection === "Remove an Employee") {
 
@@ -182,29 +261,3 @@ init()
         }
         return
     });
-
-queryAllEmployees = () => {
-    connection.connect(err => {
-        if (err) throw err;
-        connection.query(
-            `SELECT id, first_name, last_name FROM employee`, (err, results, fields) => {
-                console.log(results)
-            }
-        )
-        connection.end();
-    });
-}
-
-
-queryAllDepartments = () => {
-    connection.connect(err => {
-        if (err) throw err;
-        connection.query(
-            `SELECT name FROM department`, (err, results, fields) => {
-                console.log(results)
-            }
-        )
-        connection.end();
-    });
-}
-

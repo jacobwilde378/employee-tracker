@@ -1,6 +1,10 @@
 const inquirer = require('inquirer');
 const mysql = require('mysql2');
 
+empArray = [];
+deptArray = []
+roleArray = [];
+
 const connection = mysql.createConnection({
     host: 'localhost',
     port: 3306,
@@ -41,24 +45,43 @@ const employeeMenuQuestion = [
 const addEmployeeQuestion = [
     {
         type: 'input',
-        name:  'addEmployeeFirstName',
+        name: 'addEmployeeFirstName',
         message: "Please enter the employee's first name:  "
     },
     {
         type: 'input',
-        name:  'addEmployeeLastName',
+        name: 'addEmployeeLastName',
         message: "Please enter the employee's last name:  "
     },
     {
-        type: 'input',
-        name:  'addEmployeeRoleId',
+        type: 'list',
+        name: 'addEmployeeRoleId',
         message: "Please select the employee's role:  ",
-        choices: []
+        choices: roleArray
     },
     {
-        type: 'input',
-        name:  'addEmployeeManagerId',
-        message: "Please select the employee's manager:  "
+        type: 'checkbox',
+        name: 'addEmployeeManagerId',
+        message: "Please select the employee's manager:  ",
+        choices: empArray
+    }
+]
+
+const updateEmployeeQuestion = [
+    {
+        type: 'list',
+        name: 'updateEmployeeSelection',
+        message: 'Please select the employee to alter:  ',
+        choices: empArray
+    }
+]
+
+const removeEmployeeQuestion = [
+    {
+        type: 'list',
+        name: 'removeEmployeeSelection',
+        message: 'Please select the employee to remove:  ',
+        choices: empArray
     }
 ]
 
@@ -98,7 +121,15 @@ const employeeMenu = () => {
 }
 
 const addEmployee = () => {
+    queryAllRoles();
     return inquirer.prompt(addEmployeeQuestion)
+}
+const updateEmployee = () => {
+    return inquirer.prompt(updateEmployeeQuestion)
+}
+
+const removeEmployee = () => {
+    return inquirer.prompt(removeEmployeeQuestion)
 }
 
 const roleMenu = () => {
@@ -153,13 +184,44 @@ init()
         return
     });
 
-
-
 queryAllEmployees = () => {
-    connection.query(
-        `SELECT first_name, last_name FROM employee`, (err, results, fields) => {
-            console.log(results)
-        }
-    )
-    connection.end();
+    connection.connect(err => {
+        if (err) throw err;
+        connection.query(
+            `SELECT id, first_name, last_name FROM employee`, (err, results, fields) => {
+                console.log(results)
+            }
+        )
+        connection.end();
+    });
+}
+
+
+queryAllDepartments = () => {
+    connection.connect(err => {
+        if (err) throw err;
+        connection.query(
+            `SELECT name FROM department`, (err, results, fields) => {
+                console.log(results)
+            }
+        )
+        connection.end();
+    });
+}
+
+queryAllRoles = () => {
+    console.log('made it')
+    connection.connect(err => {
+        if (err) throw err;
+        connection.query(
+            `SELECT title FROM role`, (err, results, fields) => {
+                roleArray = []
+                for (let i = 0; i < results.length; i++) {
+                    roleArray.push(results[i].title)
+                }
+            }
+        )
+        console.log("rolesArray:  " + roleArray)
+        connection.end();
+    });
 }
